@@ -1,6 +1,6 @@
 ﻿using MySqlConnector;
 
-using var connection = new MySqlConnection(ConexaoBD.connectionString);
+using var connection = new MySqlConnection(ConfiguracaoBD.connectionString);
 
 connection.Open();
 
