@@ -305,7 +305,7 @@ public class Schedulle
             throw new InvalidOperationException("Não é possível remover um agendamento cujo horário agendado já passou.");
         }
 
-        string query = $"""lll
+        string query = $"""
             DELETE FROM {tabela} 
             WHERE id = @id;
             """;
