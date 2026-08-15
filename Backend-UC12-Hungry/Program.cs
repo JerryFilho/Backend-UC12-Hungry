@@ -1,8 +1,15 @@
 using Backend_UC12_Hungry;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-// Instanciação de serviços Active Record mantidos pelo integrante João
+// Instanciação de serviços Active Record
+var userService = new User();
+var companyService = new Company();
 var schedulleService = new Schedulle();
+var photoService = new Photo();
 var assessmentService = new Assessment();
+var paymentService = new Payment();
 
 bool executando = true;
 
@@ -11,11 +18,15 @@ while (executando)
 {
     Console.Clear();
     Console.WriteLine("==================================================");
-    Console.WriteLine("       SISTEMA HUNGRY - MÓDULO DO JOÃO            ");
-    Console.WriteLine("    Gerenciamento de Agendamentos e Avaliações   ");
+    Console.WriteLine("                SISTEMA HUNGRY                    ");
+    Console.WriteLine("         Menu de Gerenciamento Geral              ");
     Console.WriteLine("==================================================");
-    Console.WriteLine(" 1 - Menu de Agendamentos (Schedulle)");
-    Console.WriteLine(" 2 - Menu de Avaliações (Assessment)");
+    Console.WriteLine(" 1 - Gerenciar Usuários (User)");
+    Console.WriteLine(" 2 - Gerenciar Empresas (Company)");
+    Console.WriteLine(" 3 - Gerenciar Agendamentos (Schedulle)");
+    Console.WriteLine(" 4 - Gerenciar Fotos (Photo)");
+    Console.WriteLine(" 5 - Gerenciar Avaliações (Assessment)");
+    Console.WriteLine(" 6 - Gerenciar Pagamentos (Payment)");
     Console.WriteLine(" 0 - Sair");
     Console.WriteLine("==================================================");
     Console.Write("Escolha uma opção: ");
@@ -25,10 +36,22 @@ while (executando)
     switch (opcao)
     {
         case "1":
-            MenuAgendamentos(schedulleService);
+            await MenuUsuarios();
             break;
         case "2":
+            await MenuEmpresas();
+            break;
+        case "3":
+            MenuAgendamentos(schedulleService);
+            break;
+        case "4":
+            await MenuFotos();
+            break;
+        case "5":
             MenuAvaliacoes(assessmentService, schedulleService);
+            break;
+        case "6":
+            await MenuPagamentos();
             break;
         case "0":
             executando = false;
@@ -39,6 +62,269 @@ while (executando)
             break;
     }
 }
+
+#region Menu de Usuários
+async Task MenuUsuarios()
+{
+    bool noSubmenu = true;
+    while (noSubmenu)
+    {
+        Console.Clear();
+        Console.WriteLine("==================================================");
+        Console.WriteLine("               GERENCIAR USUÁRIOS                 ");
+        Console.WriteLine("==================================================");
+        Console.WriteLine(" 1 - Cadastrar Usuário");
+        Console.WriteLine(" 2 - Listar Todos os Usuários");
+        Console.WriteLine(" 3 - Buscar Usuário por ID");
+        Console.WriteLine(" 4 - Atualizar Usuário");
+        Console.WriteLine(" 5 - Remover Usuário");
+        Console.WriteLine(" 0 - Voltar ao Menu Principal");
+        Console.WriteLine("==================================================");
+        Console.Write("Escolha uma opção: ");
+
+        string? subOpcao = Console.ReadLine();
+
+        switch (subOpcao)
+        {
+            case "1":
+                Console.Clear();
+                Console.WriteLine("--- CADASTRAR USUÁRIO ---");
+                Console.Write("Nome: ");
+                string name = Console.ReadLine() ?? "";
+                Console.Write("Tipo (CLIENT/ADMIN/OWNER): ");
+                string type = Console.ReadLine() ?? "CLIENT";
+                Console.Write("E-mail: ");
+                string email = Console.ReadLine() ?? "";
+                Console.Write("Senha: ");
+                string password = Console.ReadLine() ?? "";
+                Console.Write("Data de Nascimento (dd/MM/yyyy): ");
+                if (!DateTime.TryParse(Console.ReadLine(), out DateTime birthDate)) birthDate = DateTime.Now;
+                Console.Write("CPF: ");
+                string cpf = Console.ReadLine() ?? "";
+
+                var novoUsuario = new User
+                {
+                    Name = name,
+                    Type = type,
+                    Email = email,
+                    Password = password,
+                    BirthDate = birthDate,
+                    Cpf = cpf,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                await novoUsuario.InserirAsync();
+                PressionarParaContinuar("Usuário inserido com sucesso!");
+                break;
+
+            case "2":
+                Console.Clear();
+                Console.WriteLine("--- LISTA DE USUÁRIOS ---");
+                var lista = await userService.BuscarTodosAsync();
+                foreach (var u in lista)
+                {
+                    Console.WriteLine($"ID: {u.Id} | Nome: {u.Name} | Tipo: {u.Type} | E-mail: {u.Email}");
+                }
+                PressionarParaContinuar();
+                break;
+
+            case "3":
+                Console.Clear();
+                Console.Write("Digite o ID do Usuário: ");
+                if (int.TryParse(Console.ReadLine(), out int id))
+                {
+                    var u = new User();
+                    await u.BuscarAsync(id);
+                    if (u.Id > 0)
+                    {
+                        Console.WriteLine($"ID: {u.Id} | Nome: {u.Name} | Tipo: {u.Type} | E-mail: {u.Email} | CPF: {u.Cpf}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Usuário não encontrado.");
+                    }
+                }
+                PressionarParaContinuar();
+                break;
+
+            case "4":
+                Console.Clear();
+                Console.Write("Digite o ID do Usuário a atualizar: ");
+                if (int.TryParse(Console.ReadLine(), out int idAlt))
+                {
+                    var u = new User();
+                    await u.BuscarAsync(idAlt);
+                    if (u.Id > 0)
+                    {
+                        Console.Write($"Novo Nome ({u.Name}): ");
+                        string newName = Console.ReadLine() ?? "";
+                        if (!string.IsNullOrWhiteSpace(newName)) u.Name = newName;
+                        
+                        Console.Write($"Novo Tipo ({u.Type}): ");
+                        string newType = Console.ReadLine() ?? "";
+                        if (!string.IsNullOrWhiteSpace(newType)) u.Type = newType;
+
+                        Console.Write($"Novo Email ({u.Email}): ");
+                        string newEmail = Console.ReadLine() ?? "";
+                        if (!string.IsNullOrWhiteSpace(newEmail)) u.Email = newEmail;
+
+                        await u.AtualizarAsync();
+                        PressionarParaContinuar("Usuário atualizado com sucesso!");
+                    }
+                    else
+                    {
+                        PressionarParaContinuar("Usuário não encontrado.");
+                    }
+                }
+                break;
+
+            case "5":
+                Console.Clear();
+                Console.Write("Digite o ID do Usuário a remover: ");
+                if (int.TryParse(Console.ReadLine(), out int idRem))
+                {
+                    bool removido = await userService.RemoverAsync(idRem);
+                    if (removido)
+                        PressionarParaContinuar("Usuário removido com sucesso (admins não podem ser removidos).");
+                    else
+                        PressionarParaContinuar("Falha ao remover o usuário.");
+                }
+                break;
+
+            case "0":
+                noSubmenu = false;
+                break;
+        }
+    }
+}
+#endregion
+
+#region Menu de Empresas
+async Task MenuEmpresas()
+{
+    bool noSubmenu = true;
+    while (noSubmenu)
+    {
+        Console.Clear();
+        Console.WriteLine("==================================================");
+        Console.WriteLine("               GERENCIAR EMPRESAS                 ");
+        Console.WriteLine("==================================================");
+        Console.WriteLine(" 1 - Cadastrar Empresa");
+        Console.WriteLine(" 2 - Listar Todas as Empresas");
+        Console.WriteLine(" 3 - Buscar Empresa por ID");
+        Console.WriteLine(" 4 - Atualizar Empresa");
+        Console.WriteLine(" 5 - Remover Empresa");
+        Console.WriteLine(" 0 - Voltar ao Menu Principal");
+        Console.WriteLine("==================================================");
+        Console.Write("Escolha uma opção: ");
+
+        string? subOpcao = Console.ReadLine();
+
+        switch (subOpcao)
+        {
+            case "1":
+                Console.Clear();
+                Console.WriteLine("--- CADASTRAR EMPRESA ---");
+                Console.Write("Nome: ");
+                string name = Console.ReadLine() ?? "";
+                Console.Write("Categoria: ");
+                string category = Console.ReadLine() ?? "";
+                Console.Write("CNPJ: ");
+                string cnpj = Console.ReadLine() ?? "";
+                Console.Write("Lugares: ");
+                string places = Console.ReadLine() ?? "";
+                Console.Write("Telefone: ");
+                string phone = Console.ReadLine() ?? "";
+                Console.Write("ID do Usuário Dono (Owner): ");
+                int.TryParse(Console.ReadLine(), out int userId);
+
+                var novaEmpresa = new Company
+                {
+                    Name = name,
+                    Category = category,
+                    Cnpj = cnpj,
+                    Places = places,
+                    Phone = phone,
+                    Fundation = DateTime.Now,
+                    Description = "Nova empresa",
+                    UserId = userId
+                };
+
+                await novaEmpresa.InserirAsync();
+                PressionarParaContinuar("Empresa cadastrada com sucesso!");
+                break;
+
+            case "2":
+                Console.Clear();
+                var lista = await companyService.BuscarTodosAsync();
+                companyService.Mostrar(lista);
+                PressionarParaContinuar();
+                break;
+
+            case "3":
+                Console.Clear();
+                Console.Write("Digite o ID da Empresa: ");
+                if (int.TryParse(Console.ReadLine(), out int id))
+                {
+                    var c = new Company();
+                    await c.BuscarAsync(id);
+                    if (c.Id > 0)
+                    {
+                        c.Mostrar();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Empresa não encontrada.");
+                    }
+                }
+                PressionarParaContinuar();
+                break;
+
+            case "4":
+                Console.Clear();
+                Console.Write("Digite o ID da Empresa a atualizar: ");
+                if (int.TryParse(Console.ReadLine(), out int idAlt))
+                {
+                    var c = new Company();
+                    await c.BuscarAsync(idAlt);
+                    if (c.Id > 0)
+                    {
+                        Console.Write($"Novo Nome ({c.Name}): ");
+                        string newName = Console.ReadLine() ?? "";
+                        if (!string.IsNullOrWhiteSpace(newName)) c.Name = newName;
+
+                        Console.Write($"Nova Categoria ({c.Category}): ");
+                        string newCat = Console.ReadLine() ?? "";
+                        if (!string.IsNullOrWhiteSpace(newCat)) c.Category = newCat;
+
+                        await c.AtualizarAsync();
+                        PressionarParaContinuar("Empresa atualizada com sucesso!");
+                    }
+                    else
+                    {
+                        PressionarParaContinuar("Empresa não encontrada.");
+                    }
+                }
+                break;
+
+            case "5":
+                Console.Clear();
+                Console.Write("Digite o ID da Empresa a remover: ");
+                if (int.TryParse(Console.ReadLine(), out int idRem))
+                {
+                    await companyService.RemoverAsync(idRem);
+                    PressionarParaContinuar("Empresa removida com sucesso.");
+                }
+                break;
+
+            case "0":
+                noSubmenu = false;
+                break;
+        }
+    }
+}
+#endregion
 
 #region Menu de Agendamentos
 
@@ -300,6 +586,113 @@ void RemoverAgendamento(Schedulle schedulleService)
 
 #endregion
 
+#region Menu de Fotos
+async Task MenuFotos()
+{
+    bool noSubmenu = true;
+    while (noSubmenu)
+    {
+        Console.Clear();
+        Console.WriteLine("==================================================");
+        Console.WriteLine("                 GERENCIAR FOTOS                  ");
+        Console.WriteLine("==================================================");
+        Console.WriteLine(" 1 - Cadastrar Foto");
+        Console.WriteLine(" 2 - Listar Todas as Fotos");
+        Console.WriteLine(" 3 - Buscar Foto por ID");
+        Console.WriteLine(" 4 - Atualizar Foto");
+        Console.WriteLine(" 5 - Remover Foto");
+        Console.WriteLine(" 0 - Voltar ao Menu Principal");
+        Console.WriteLine("==================================================");
+        Console.Write("Escolha uma opção: ");
+
+        string? subOpcao = Console.ReadLine();
+
+        switch (subOpcao)
+        {
+            case "1":
+                Console.Clear();
+                Console.WriteLine("--- CADASTRAR FOTO ---");
+                Console.Write("URL da Foto: ");
+                string url = Console.ReadLine() ?? "";
+                Console.Write("ID da Empresa (Company): ");
+                int.TryParse(Console.ReadLine(), out int companyId);
+                Console.Write("ID do Usuário (Opcional): ");
+                int? userId = null;
+                string? userStr = Console.ReadLine();
+                if (int.TryParse(userStr, out int uId)) userId = uId;
+
+                var novaFoto = new Photo(url, companyId, userId);
+                await novaFoto.InserirAsync();
+                PressionarParaContinuar("Foto cadastrada com sucesso!");
+                break;
+
+            case "2":
+                Console.Clear();
+                var lista = await photoService.BuscarTodosAsync();
+                photoService.Mostrar(lista);
+                PressionarParaContinuar();
+                break;
+
+            case "3":
+                Console.Clear();
+                Console.Write("Digite o ID da Foto: ");
+                if (int.TryParse(Console.ReadLine(), out int id))
+                {
+                    var f = new Photo();
+                    await f.BuscarAsync(id);
+                    if (f.Id > 0)
+                    {
+                        f.Mostrar();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Foto não encontrada.");
+                    }
+                }
+                PressionarParaContinuar();
+                break;
+
+            case "4":
+                Console.Clear();
+                Console.Write("Digite o ID da Foto a atualizar: ");
+                if (int.TryParse(Console.ReadLine(), out int idAlt))
+                {
+                    var f = new Photo();
+                    await f.BuscarAsync(idAlt);
+                    if (f.Id > 0)
+                    {
+                        Console.Write($"Nova URL ({f.Url}): ");
+                        string newUrl = Console.ReadLine() ?? "";
+                        if (!string.IsNullOrWhiteSpace(newUrl)) f.Url = newUrl;
+
+                        await f.AtualizarAsync();
+                        PressionarParaContinuar("Foto atualizada com sucesso!");
+                    }
+                    else
+                    {
+                        PressionarParaContinuar("Foto não encontrada.");
+                    }
+                }
+                break;
+
+            case "5":
+                Console.Clear();
+                Console.Write("Digite o ID da Foto a remover: ");
+                if (int.TryParse(Console.ReadLine(), out int idRem))
+                {
+                    await photoService.RemoverAsync(idRem);
+                    PressionarParaContinuar("Foto removida com sucesso.");
+                }
+                break;
+
+            case "0":
+                noSubmenu = false;
+                break;
+        }
+    }
+}
+#endregion
+
 #region Menu de Avaliações
 
 void MenuAvaliacoes(Assessment assessmentService, Schedulle schedulleService)
@@ -493,6 +886,91 @@ void RemoverAvaliacao(Assessment assessmentService)
 
 #endregion
 
+#region Menu de Pagamentos
+async Task MenuPagamentos()
+{
+    bool noSubmenu = true;
+    while (noSubmenu)
+    {
+        Console.Clear();
+        Console.WriteLine("==================================================");
+        Console.WriteLine("               GERENCIAR PAGAMENTOS               ");
+        Console.WriteLine("==================================================");
+        Console.WriteLine(" 1 - Registrar Pagamento");
+        Console.WriteLine(" 2 - Listar Todos os Pagamentos");
+        Console.WriteLine(" 3 - Buscar Pagamento por ID");
+        Console.WriteLine(" 0 - Voltar ao Menu Principal");
+        Console.WriteLine("==================================================");
+        Console.Write("Escolha uma opção: ");
+
+        string? subOpcao = Console.ReadLine();
+
+        switch (subOpcao)
+        {
+            case "1":
+                Console.Clear();
+                Console.WriteLine("--- REGISTRAR PAGAMENTO ---");
+                Console.Write("Valor (R$): ");
+                if (!float.TryParse(Console.ReadLine(), out float value)) value = 0;
+                Console.Write("ID da Empresa (Company): ");
+                int.TryParse(Console.ReadLine(), out int companyId);
+                Console.Write("ID do Usuário (Cliente/Owner) Opcional: ");
+                int? userId = null;
+                string? userStr = Console.ReadLine();
+                if (int.TryParse(userStr, out int uId)) userId = uId;
+
+                var novoPagamento = new Payment
+                {
+                    Value = value,
+                    DueDate = DateTime.Now.AddDays(30),
+                    ToDate = DateTime.Now,
+                    CompanyId = companyId,
+                    UserId = userId,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                await novoPagamento.InserirAsync();
+                PressionarParaContinuar("Pagamento registrado com sucesso!");
+                break;
+
+            case "2":
+                Console.Clear();
+                var lista = await paymentService.BuscarTodosAsync();
+                foreach (var p in lista)
+                {
+                    Console.WriteLine($"ID: {p.Id} | Valor: R$ {p.Value:F2} | Vencimento: {p.DueDate:dd/MM/yyyy} | Empresa ID: {p.company?.Id} | Usuário ID: {p.user?.Id}");
+                }
+                PressionarParaContinuar();
+                break;
+
+            case "3":
+                Console.Clear();
+                Console.Write("Digite o ID do Pagamento: ");
+                if (int.TryParse(Console.ReadLine(), out int id))
+                {
+                    var p = new Payment();
+                    await p.BuscarAsync(id);
+                    if (p.Id > 0)
+                    {
+                        Console.WriteLine($"ID: {p.Id} | Valor: R$ {p.Value:F2} | Vencimento: {p.DueDate:dd/MM/yyyy} | Empresa ID: {p.company?.Id} (Nome: {p.company?.Name}) | Usuário ID: {p.user?.Id} (Nome: {p.user?.Name})");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Pagamento não encontrado.");
+                    }
+                }
+                PressionarParaContinuar();
+                break;
+
+            case "0":
+                noSubmenu = false;
+                break;
+        }
+    }
+}
+#endregion
+
 void PressionarParaContinuar(string? mensagem = null)
 {
     if (!string.IsNullOrEmpty(mensagem))
@@ -502,3 +980,4 @@ void PressionarParaContinuar(string? mensagem = null)
     Console.WriteLine("\nPressione ENTER para continuar...");
     Console.ReadLine();
 }
+

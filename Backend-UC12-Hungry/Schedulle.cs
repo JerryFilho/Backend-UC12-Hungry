@@ -28,10 +28,30 @@ public class Schedulle
     public string? Observation { get; set; }
 
     // ID do usuário (Cliente) que realizou o agendamento (Chave Estrangeira -> users.id)
-    public int UserId { get; set; }
+    public User user { get; set; } = new User();
 
     // ID da empresa/estabelecimento com quem foi agendado (Chave Estrangeira -> companies.id)
-    public int CompanyId { get; set; }
+    public Company company { get; set; } = new Company();
+
+    public int UserId
+    {
+        get => user.Id;
+        set
+        {
+            user ??= new User();
+            user.Id = value;
+        }
+    }
+
+    public int CompanyId
+    {
+        get => company.Id;
+        set
+        {
+            company ??= new Company();
+            company.Id = value;
+        }
+    }
 
     // Data de criação do registro no banco de dados (coluna creat_at)
     public DateTime CreatedAt { get; set; }
@@ -43,6 +63,17 @@ public class Schedulle
 
     public Schedulle() { }
 
+    public Schedulle(int id, DateTime datetimez, string type, int people, string? observation, User user, Company company)
+    {
+        Id = id;
+        Datetimez = datetimez;
+        Type = type;
+        People = people;
+        Observation = observation;
+        this.user = user;
+        this.company = company;
+    }
+
     public Schedulle(int id, DateTime datetimez, string type, int people, string? observation, int userId, int companyId)
     {
         Id = id;
@@ -50,8 +81,8 @@ public class Schedulle
         Type = type;
         People = people;
         Observation = observation;
-        UserId = userId;
-        CompanyId = companyId;
+        this.user = new User { Id = userId };
+        this.company = new Company { Id = companyId };
     }
 
     /// <summary>
@@ -63,7 +94,7 @@ public class Schedulle
         Console.WriteLine($"ID: {Id} | Data/Hora: {Datetimez:dd/MM/yyyy HH:mm}");
         Console.WriteLine($"Tipo: {Type} | Pessoas: {People}");
         Console.WriteLine($"Obs: {Observation ?? "Sem observações"}");
-        Console.WriteLine($"Usuário ID: {UserId} | Empresa ID: {CompanyId}");
+        Console.WriteLine($"Usuário ID: {user?.Id} (Nome: {user?.Name}) | Empresa ID: {company?.Id} (Nome: {company?.Name})");
         Console.WriteLine($"Criado em: {CreatedAt:dd/MM/yyyy HH:mm}");
     }
 
@@ -105,8 +136,8 @@ public class Schedulle
         comando.Parameters.AddWithValue("@type", Type);
         comando.Parameters.AddWithValue("@people", People);
         comando.Parameters.AddWithValue("@observation", (object?)Observation ?? DBNull.Value);
-        comando.Parameters.AddWithValue("@userId", UserId);
-        comando.Parameters.AddWithValue("@companyId", CompanyId);
+        comando.Parameters.AddWithValue("@userId", user.Id);
+        comando.Parameters.AddWithValue("@companyId", company.Id);
 
         await conexao.OpenAsync();
         var result = await comando.ExecuteScalarAsync();
@@ -129,9 +160,17 @@ public class Schedulle
     public async Task<bool> BuscaAsync(int id)
     {
         string query = $"""
-            SELECT id, datetimez, type, people, observation, user_id, company_id, creat_at, updated_at 
-            FROM {tabela} 
-            WHERE id = @id;
+            SELECT s.*, 
+                   u.name AS user_name, u.type AS user_type, u.email AS user_email, 
+                   u.password AS user_password, u.birth_date AS user_birth, u.cpf AS user_cpf, 
+                   u.createdAt AS user_created, u.updatedAt AS user_updated,
+                   c.name AS comp_name, c.category AS comp_cat, c.cnpj AS comp_cnpj, 
+                   c.places AS comp_places, c.phone AS comp_phone, c.fundation AS comp_fund, 
+                   c.description AS comp_desc, c.created_at AS comp_created, c.updated_at AS comp_updated
+            FROM {tabela} s
+            INNER JOIN users u ON s.user_id = u.id
+            INNER JOIN companies c ON s.company_id = c.id
+            WHERE s.id = @id;
             """;
 
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
@@ -173,8 +212,16 @@ public class Schedulle
     public async Task<List<Schedulle>> BuscarTodosAsync()
     {
         string query = $"""
-            SELECT id, datetimez, type, people, observation, user_id, company_id, creat_at, updated_at 
-            FROM {tabela};
+            SELECT s.*, 
+                   u.name AS user_name, u.type AS user_type, u.email AS user_email, 
+                   u.password AS user_password, u.birth_date AS user_birth, u.cpf AS user_cpf, 
+                   u.createdAt AS user_created, u.updatedAt AS user_updated,
+                   c.name AS comp_name, c.category AS comp_cat, c.cnpj AS comp_cnpj, 
+                   c.places AS comp_places, c.phone AS comp_phone, c.fundation AS comp_fund, 
+                   c.description AS comp_desc, c.created_at AS comp_created, c.updated_at AS comp_updated
+            FROM {tabela} s
+            INNER JOIN users u ON s.user_id = u.id
+            INNER JOIN companies c ON s.company_id = c.id;
             """;
 
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
@@ -205,9 +252,17 @@ public class Schedulle
     public async Task<List<Schedulle>> BuscarPorUsuarioAsync(int userId)
     {
         string query = $"""
-            SELECT id, datetimez, type, people, observation, user_id, company_id, creat_at, updated_at 
-            FROM {tabela} 
-            WHERE user_id = @userId;
+            SELECT s.*, 
+                   u.name AS user_name, u.type AS user_type, u.email AS user_email, 
+                   u.password AS user_password, u.birth_date AS user_birth, u.cpf AS user_cpf, 
+                   u.createdAt AS user_created, u.updatedAt AS user_updated,
+                   c.name AS comp_name, c.category AS comp_cat, c.cnpj AS comp_cnpj, 
+                   c.places AS comp_places, c.phone AS comp_phone, c.fundation AS comp_fund, 
+                   c.description AS comp_desc, c.created_at AS comp_created, c.updated_at AS comp_updated
+            FROM {tabela} s
+            INNER JOIN users u ON s.user_id = u.id
+            INNER JOIN companies c ON s.company_id = c.id
+            WHERE s.user_id = @userId;
             """;
 
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
@@ -273,8 +328,8 @@ public class Schedulle
         comando.Parameters.AddWithValue("@type", Type);
         comando.Parameters.AddWithValue("@people", People);
         comando.Parameters.AddWithValue("@observation", (object?)Observation ?? DBNull.Value);
-        comando.Parameters.AddWithValue("@userId", UserId);
-        comando.Parameters.AddWithValue("@companyId", CompanyId);
+        comando.Parameters.AddWithValue("@userId", user.Id);
+        comando.Parameters.AddWithValue("@companyId", company.Id);
 
         await conexao.OpenAsync();
         int linhasAfetadas = await comando.ExecuteNonQueryAsync();
@@ -331,8 +386,33 @@ public class Schedulle
         item.Type = reader.GetString("type");
         item.People = reader.GetInt32("people");
         item.Observation = reader.IsDBNull(reader.GetOrdinal("observation")) ? null : reader.GetString("observation");
-        item.UserId = reader.GetInt32("user_id");
-        item.CompanyId = reader.GetInt32("company_id");
+        
+        item.user = new User(
+            reader.GetInt32("user_id"),
+            reader.GetString("user_name"),
+            reader.GetString("user_type"),
+            reader.GetString("user_email"),
+            reader.GetString("user_password"),
+            reader.GetDateTime("user_birth"),
+            reader.GetString("user_cpf"),
+            reader.GetDateTime("user_created"),
+            reader.GetDateTime("user_updated")
+        );
+
+        item.company = new Company(
+            reader.GetInt32("company_id"),
+            reader.GetString("comp_name"),
+            reader.GetString("comp_cat"),
+            reader.GetString("comp_cnpj"),
+            reader.GetString("comp_places"),
+            reader.GetString("comp_phone"),
+            reader.GetDateTime("comp_fund"),
+            reader.GetString("comp_desc"),
+            item.user, // reference user
+            reader.GetDateTime("comp_created"),
+            reader.GetDateTime("comp_updated")
+        );
+
         item.CreatedAt = reader.GetDateTime("creat_at");
         item.UpdatedAt = reader.GetDateTime("updated_at");
     }

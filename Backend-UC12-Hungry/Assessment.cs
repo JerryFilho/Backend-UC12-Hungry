@@ -16,10 +16,30 @@ public class Assessment
     public int Id { get; set; }
 
     // ID do usuário que fez a avaliação (Chave Estrangeira -> users.id)
-    public int UserId { get; set; }
+    public User user { get; set; } = new User();
 
     // ID do agendamento avaliado (Chave Estrangeira -> schedulles.id)
-    public int SchedullesId { get; set; }
+    public Schedulle schedulle { get; set; } = new Schedulle();
+
+    public int UserId
+    {
+        get => user.Id;
+        set
+        {
+            user ??= new User();
+            user.Id = value;
+        }
+    }
+
+    public int SchedullesId
+    {
+        get => schedulle.Id;
+        set
+        {
+            schedulle ??= new Schedulle();
+            schedulle.Id = value;
+        }
+    }
 
     // Nota da avaliação (ex: de 1 a 5)
     public int Note { get; set; }
@@ -37,11 +57,20 @@ public class Assessment
 
     public Assessment() { }
 
+    public Assessment(int id, User user, Schedulle schedulle, int note, string? comment)
+    {
+        Id = id;
+        this.user = user;
+        this.schedulle = schedulle;
+        Note = note;
+        Comment = comment;
+    }
+
     public Assessment(int id, int userId, int schedullesId, int note, string? comment)
     {
         Id = id;
-        UserId = userId;
-        SchedullesId = schedullesId;
+        this.user = new User { Id = userId };
+        this.schedulle = new Schedulle { Id = schedullesId };
         Note = note;
         Comment = comment;
     }
@@ -54,7 +83,7 @@ public class Assessment
         Console.WriteLine($"--------------------------------------------------");
         Console.WriteLine($"ID: {Id} | Nota: {Note}/5");
         Console.WriteLine($"Comentário: {Comment ?? "Sem comentário"}");
-        Console.WriteLine($"Agendamento ID: {SchedullesId} | Usuário ID: {UserId}");
+        Console.WriteLine($"Agendamento ID: {schedulle?.Id} | Usuário ID: {user?.Id} (Nome: {user?.Name})");
         Console.WriteLine($"Criada em: {CreatedAt:dd/MM/yyyy HH:mm}");
     }
 
@@ -92,8 +121,8 @@ public class Assessment
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
         using var comando = new MySqlCommand(query, conexao);
 
-        comando.Parameters.AddWithValue("@userId", UserId);
-        comando.Parameters.AddWithValue("@schedullesId", SchedullesId);
+        comando.Parameters.AddWithValue("@userId", user.Id);
+        comando.Parameters.AddWithValue("@schedullesId", schedulle.Id);
         comando.Parameters.AddWithValue("@note", Note);
         comando.Parameters.AddWithValue("@comment", (object?)Comment ?? DBNull.Value);
 
@@ -115,9 +144,21 @@ public class Assessment
     public async Task<bool> BuscaAsync(int id)
     {
         string query = $"""
-            SELECT id, userId, schedullesId, note, comment, createdAt, updatedAt 
-            FROM {tabela} 
-            WHERE id = @id;
+            SELECT a.*, 
+                   u.name AS user_name, u.type AS user_type, u.email AS user_email, 
+                   u.password AS user_password, u.birth_date AS user_birth, u.cpf AS user_cpf, 
+                   u.createdAt AS user_created, u.updatedAt AS user_updated,
+                   s.datetimez AS sched_time, s.type AS sched_type, s.people AS sched_people, 
+                   s.observation AS sched_obs, s.creat_at AS sched_created, s.updated_at AS sched_updated,
+                   s.company_id AS sched_company_id,
+                   c.name AS comp_name, c.category AS comp_cat, c.cnpj AS comp_cnpj, 
+                   c.places AS comp_places, c.phone AS comp_phone, c.fundation AS comp_fund, 
+                   c.description AS comp_desc, c.created_at AS comp_created, c.updated_at AS comp_updated
+            FROM {tabela} a
+            INNER JOIN users u ON a.userId = u.id
+            INNER JOIN schedulles s ON a.schedullesId = s.id
+            INNER JOIN companies c ON s.company_id = c.id
+            WHERE a.id = @id;
             """;
 
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
@@ -159,8 +200,20 @@ public class Assessment
     public async Task<List<Assessment>> BuscarTodosAsync()
     {
         string query = $"""
-            SELECT id, userId, schedullesId, note, comment, createdAt, updatedAt 
-            FROM {tabela};
+            SELECT a.*, 
+                   u.name AS user_name, u.type AS user_type, u.email AS user_email, 
+                   u.password AS user_password, u.birth_date AS user_birth, u.cpf AS user_cpf, 
+                   u.createdAt AS user_created, u.updatedAt AS user_updated,
+                   s.datetimez AS sched_time, s.type AS sched_type, s.people AS sched_people, 
+                   s.observation AS sched_obs, s.creat_at AS sched_created, s.updated_at AS sched_updated,
+                   s.company_id AS sched_company_id,
+                   c.name AS comp_name, c.category AS comp_cat, c.cnpj AS comp_cnpj, 
+                   c.places AS comp_places, c.phone AS comp_phone, c.fundation AS comp_fund, 
+                   c.description AS comp_desc, c.created_at AS comp_created, c.updated_at AS comp_updated
+            FROM {tabela} a
+            INNER JOIN users u ON a.userId = u.id
+            INNER JOIN schedulles s ON a.schedullesId = s.id
+            INNER JOIN companies c ON s.company_id = c.id;
             """;
 
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
@@ -191,9 +244,21 @@ public class Assessment
     public async Task<List<Assessment>> BuscarPorAgendamentoAsync(int schedullesId)
     {
         string query = $"""
-            SELECT id, userId, schedullesId, note, comment, createdAt, updatedAt 
-            FROM {tabela} 
-            WHERE schedullesId = @schedullesId;
+            SELECT a.*, 
+                   u.name AS user_name, u.type AS user_type, u.email AS user_email, 
+                   u.password AS user_password, u.birth_date AS user_birth, u.cpf AS user_cpf, 
+                   u.createdAt AS user_created, u.updatedAt AS user_updated,
+                   s.datetimez AS sched_time, s.type AS sched_type, s.people AS sched_people, 
+                   s.observation AS sched_obs, s.creat_at AS sched_created, s.updated_at AS sched_updated,
+                   s.company_id AS sched_company_id,
+                   c.name AS comp_name, c.category AS comp_cat, c.cnpj AS comp_cnpj, 
+                   c.places AS comp_places, c.phone AS comp_phone, c.fundation AS comp_fund, 
+                   c.description AS comp_desc, c.created_at AS comp_created, c.updated_at AS comp_updated
+            FROM {tabela} a
+            INNER JOIN users u ON a.userId = u.id
+            INNER JOIN schedulles s ON a.schedullesId = s.id
+            INNER JOIN companies c ON s.company_id = c.id
+            WHERE a.schedullesId = @schedullesId;
             """;
 
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
@@ -247,8 +312,47 @@ public class Assessment
     private static void Mapear(MySqlDataReader reader, Assessment item)
     {
         item.Id = reader.GetInt32("id");
-        item.UserId = reader.GetInt32("userId");
-        item.SchedullesId = reader.GetInt32("schedullesId");
+        
+        item.user = new User(
+            reader.GetInt32("userId"),
+            reader.GetString("user_name"),
+            reader.GetString("user_type"),
+            reader.GetString("user_email"),
+            reader.GetString("user_password"),
+            reader.GetDateTime("user_birth"),
+            reader.GetString("user_cpf"),
+            reader.GetDateTime("user_created"),
+            reader.GetDateTime("user_updated")
+        );
+
+        Company company = new Company(
+            reader.GetInt32("sched_company_id"),
+            reader.GetString("comp_name"),
+            reader.GetString("comp_cat"),
+            reader.GetString("comp_cnpj"),
+            reader.GetString("comp_places"),
+            reader.GetString("comp_phone"),
+            reader.GetDateTime("comp_fund"),
+            reader.GetString("comp_desc"),
+            item.user, // reference user
+            reader.GetDateTime("comp_created"),
+            reader.GetDateTime("comp_updated")
+        );
+
+        item.schedulle = new Schedulle(
+            reader.GetInt32("schedullesId"),
+            reader.GetDateTime("sched_time"),
+            reader.GetString("sched_type"),
+            reader.GetInt32("sched_people"),
+            reader.IsDBNull(reader.GetOrdinal("sched_obs")) ? null : reader.GetString("sched_obs"),
+            item.user,
+            company
+        )
+        {
+            CreatedAt = reader.GetDateTime("sched_created"),
+            UpdatedAt = reader.GetDateTime("sched_updated")
+        };
+
         item.Note = reader.GetInt32("note");
         item.Comment = reader.IsDBNull(reader.GetOrdinal("comment")) ? null : reader.GetString("comment");
         item.CreatedAt = reader.GetDateTime("createdAt");

@@ -13,9 +13,26 @@ public class Company
     public string Phone { get; set; }
     public DateTime Fundation { get; set; }
     public string Description { get; set; }
-    public int? UserId { get; set; }
+    public User? user { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    public int? UserId
+    {
+        get => user?.Id;
+        set
+        {
+            if (value.HasValue)
+            {
+                user ??= new User();
+                user.Id = value.Value;
+            }
+            else
+            {
+                user = null;
+            }
+        }
+    }
 
     public const string tabela = "companies";
 
@@ -30,7 +47,7 @@ public class Company
         string phone,
         DateTime fundation,
         string description,
-        int? userId,
+        User? user,
         DateTime createdAt,
         DateTime updatedAt)
     {
@@ -42,7 +59,7 @@ public class Company
         Phone = phone;
         Fundation = fundation;
         Description = description;
-        UserId = userId;
+        this.user = user;
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
     }
@@ -55,7 +72,7 @@ public class Company
         string phone,
         DateTime fundation,
         string description,
-        int? userId)
+        User? user)
     {
         Name = name;
         Category = category;
@@ -64,7 +81,7 @@ public class Company
         Phone = phone;
         Fundation = fundation;
         Description = description;
-        UserId = userId;
+        this.user = user;
         CreatedAt = DateTime.Now;
         UpdatedAt = DateTime.Now;
     }
@@ -72,7 +89,7 @@ public class Company
     public void Mostrar()
     {
         Console.WriteLine($"ID: {Id} | Nome: {Name} | Categoria: {Category} | CNPJ: {Cnpj} | Telefone: {Phone}");
-        Console.WriteLine($"   Lugares: {Places} | Fundação: {Fundation:yyyy-MM-dd} | UserID: {UserId}");
+        Console.WriteLine($"   Lugares: {Places} | Fundação: {Fundation:yyyy-MM-dd} | UserID: {user?.Id}");
         Console.WriteLine($"   Descrição: {Description}");
         Console.WriteLine($"   Criado em: {CreatedAt} | Atualizado em: {UpdatedAt}");
         Console.WriteLine("------------------------------------------------------------------");
@@ -134,7 +151,7 @@ public class Company
         comando.Parameters.AddWithValue("phone", Phone);
         comando.Parameters.AddWithValue("fundation", Fundation);
         comando.Parameters.AddWithValue("description", Description);
-        comando.Parameters.AddWithValue("userId", UserId.HasValue ? UserId.Value : DBNull.Value);
+        comando.Parameters.AddWithValue("userId", user != null ? user.Id : DBNull.Value);
         comando.Parameters.AddWithValue("createdAt", CreatedAt);
         comando.Parameters.AddWithValue("updatedAt", UpdatedAt);
 
@@ -145,7 +162,13 @@ public class Company
     public async Task BuscarAsync(int id)
     {
         string query = $"""
-            SELECT * FROM {tabela} WHERE id = @id;
+            SELECT c.*, 
+                   u.name AS user_name, u.type AS user_type, u.email AS user_email, 
+                   u.password AS user_password, u.birth_date AS user_birth, u.cpf AS user_cpf, 
+                   u.createdAt AS user_created, u.updatedAt AS user_updated
+            FROM {tabela} c
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.id = @id;
             """;
 
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
@@ -165,7 +188,26 @@ public class Company
             Phone = dados.GetString("phone");
             Fundation = dados.GetDateTime("fundation");
             Description = dados.GetString("description");
-            UserId = dados.IsDBNull(dados.GetOrdinal("user_id")) ? null : dados.GetInt32("user_id");
+            
+            if (!dados.IsDBNull(dados.GetOrdinal("user_id")))
+            {
+                user = new User(
+                    dados.GetInt32("user_id"),
+                    dados.GetString("user_name"),
+                    dados.GetString("user_type"),
+                    dados.GetString("user_email"),
+                    dados.GetString("user_password"),
+                    dados.GetDateTime("user_birth"),
+                    dados.GetString("user_cpf"),
+                    dados.GetDateTime("user_created"),
+                    dados.GetDateTime("user_updated")
+                );
+            }
+            else
+            {
+                user = null;
+            }
+
             CreatedAt = dados.GetDateTime("created_at");
             UpdatedAt = dados.GetDateTime("updated_at");
         }
@@ -174,9 +216,12 @@ public class Company
     public async Task<List<Company>> BuscarTodosAsync()
     {
         string query = $"""
-            SELECT
-               *
-            FROM {tabela}
+            SELECT c.*, 
+                   u.name AS user_name, u.type AS user_type, u.email AS user_email, 
+                   u.password AS user_password, u.birth_date AS user_birth, u.cpf AS user_cpf, 
+                   u.createdAt AS user_created, u.updatedAt AS user_updated
+            FROM {tabela} c
+            LEFT JOIN users u ON c.user_id = u.id
             """;
 
         using var conexao = new MySqlConnection(ConexaoBD.connectionString);
@@ -188,7 +233,21 @@ public class Company
         List<Company> lista = new();
         while (await dados.ReadAsync())
         {
-            int? userId = dados.IsDBNull(dados.GetOrdinal("user_id")) ? null : dados.GetInt32("user_id");
+            User? relatedUser = null;
+            if (!dados.IsDBNull(dados.GetOrdinal("user_id")))
+            {
+                relatedUser = new User(
+                    dados.GetInt32("user_id"),
+                    dados.GetString("user_name"),
+                    dados.GetString("user_type"),
+                    dados.GetString("user_email"),
+                    dados.GetString("user_password"),
+                    dados.GetDateTime("user_birth"),
+                    dados.GetString("user_cpf"),
+                    dados.GetDateTime("user_created"),
+                    dados.GetDateTime("user_updated")
+                );
+            }
 
             Company company = new Company(
                 dados.GetInt32("id"),
@@ -199,7 +258,7 @@ public class Company
                 dados.GetString("phone"),
                 dados.GetDateTime("fundation"),
                 dados.GetString("description"),
-                userId,
+                relatedUser,
                 dados.GetDateTime("created_at"),
                 dados.GetDateTime("updated_at")
             );
@@ -238,7 +297,7 @@ public class Company
         comando.Parameters.AddWithValue("phone", Phone);
         comando.Parameters.AddWithValue("fundation", Fundation);
         comando.Parameters.AddWithValue("description", Description);
-        comando.Parameters.AddWithValue("userId", UserId.HasValue ? UserId.Value : DBNull.Value);
+        comando.Parameters.AddWithValue("userId", user != null ? user.Id : DBNull.Value);
         comando.Parameters.AddWithValue("updatedAt", UpdatedAt);
 
         await conexao.OpenAsync();
